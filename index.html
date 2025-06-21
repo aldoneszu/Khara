@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>القرآن الكريم - وضع التحفيظ الكامل</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo&display=swap" rel="stylesheet">
+  <style>
+    body { background: #0d0d0d; color: #eee; font-family: 'Cairo', sans-serif; padding: 20px; }
+    select, button, input[type="text"] { background: #222; color: #0f0; padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #0f0; }
+    .ayah { border-bottom: 1px solid #333; padding: 10px; }
+    .memorized { color: #00ff99; font-weight: bold; }
+    audio { width: 100%; margin-top: 10px; }
+  </style>
+</head>
+<body>
+<h1>📖 القرآن الكريم - وضع التحفيظ الكامل 📖</h1>
+
+<input type="text" id="search" placeholder="ابحث عن آية..." oninput="searchAyah()">
+
+<select id="suraSelect"></select>
+<select id="reciterSelect">
+  <option value="ar.alafasy">العفاسي</option>
+  <option value="ar.husary">الحصري</option>
+  <option value="ar.minshawi">المنشاوي</option>
+</select>
+
+<button onclick="loadSura()">تحميل السورة</button>
+<button onclick="showMemorized()">عرض المحفوظ</button>
+
+<div id="ayahs"></div>
+
+<script>
+const api = "https://api.quran.gading.dev/surah/";
+
+async function loadSura() {
+  const sura = document.getElementById('suraSelect').value;
+  const reciter = document.getElementById('reciterSelect').value;
+  const res = await fetch(api + sura);
+  const data = await res.json();
+  renderAyahs(data.data.ayahs, sura, reciter);
+}
+
+function renderAyahs(ayahs, sura, reciter) {
+  const container = document.getElementById('ayahs');
+  container.innerHTML = '';
+  ayahs.forEach(ayah => {
+    const div = document.createElement('div');
+    div.className = 'ayah';
+    const saved = localStorage.getItem(`memorized_${sura}_${ayah.number.inSurah}`) ? 'memorized' : '';
+    div.innerHTML = `
+      <p class="${saved}">${ayah.text.ar}</p>
+      <audio controls src="https://verses.quran.com/${reciter}/${sura.padStart(3,'0')}${ayah.number.inSurah.toString().padStart(3,'0')}.mp3"></audio>
+      <button onclick="markMemorized(${sura}, ${ayah.number.inSurah}, this)">حفظت</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function markMemorized(sura, ayahNum, btn) {
+  localStorage.setItem(`memorized_${sura}_${ayahNum}`, true);
+  btn.parentElement.querySelector('p').classList.add('memorized');
+}
+
+function showMemorized() {
+  const sura = document.getElementById('suraSelect').value;
+  const reciter = document.getElementById('reciterSelect').value;
+  fetch(api + sura)
+    .then(res => res.json())
+    .then(data => {
+      const memorizedAyahs = data.data.ayahs.filter(ayah => localStorage.getItem(`memorized_${sura}_${ayah.number.inSurah}`));
+      renderAyahs(memorizedAyahs, sura, reciter);
+    });
+}
+
+function searchAyah() {
+  const term = document.getElementById('search').value.trim();
+  const sura = document.getElementById('suraSelect').value;
+  const reciter = document.getElementById('reciterSelect').value;
+  fetch(api + sura)
+    .then(res => res.json())
+    .then(data => {
+      const result = data.data.ayahs.filter(ayah => ayah.text.ar.includes(term));
+      renderAyahs(result, sura, reciter);
+    });
+}
+
+window.onload = () => {
+  for (let i = 1; i <= 114; i++) {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `سورة رقم ${i}`;
+    document.getElementById('suraSelect').appendChild(opt);
+  }
+};
+</script>
+
+</body>
+</html>
