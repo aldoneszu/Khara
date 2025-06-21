@@ -3,45 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>القرآن الكريم - وضع التحفيظ الكامل</title>
+  <title>موقع تحفيظ القرآن الكريم - خطة ذكية</title>
   <link href="https://fonts.googleapis.com/css2?family=Cairo&display=swap" rel="stylesheet">
   <style>
-    body { background: #0d0d0d; color: #eee; font-family: 'Cairo', sans-serif; padding: 20px; }
-    select, button, input[type="text"] { background: #222; color: #0f0; padding: 10px; margin: 5px; border-radius: 5px; border: 1px solid #0f0; }
-    .ayah { border-bottom: 1px solid #333; padding: 10px; }
+    body { background: #0d0d0d; color: #eee; font-family: 'Cairo', sans-serif; padding: 20px; text-align: center; }
+    .sura-btn { background: #222; color: #0f0; padding: 10px; margin: 5px; border-radius: 5px; display: inline-block; border: 1px solid #0f0; cursor: pointer; }
+    .ayah { border-bottom: 1px solid #333; padding: 10px; margin: 10px 0; }
     .memorized { color: #00ff99; font-weight: bold; }
+    .plan-btn { background: #ff0; color: #000; margin: 10px; padding: 10px; border: none; border-radius: 5px; cursor: pointer; }
     audio { width: 100%; margin-top: 10px; }
   </style>
 </head>
 <body>
-<h1>📖 القرآن الكريم - وضع التحفيظ الكامل 📖</h1>
 
-<input type="text" id="search" placeholder="ابحث عن آية..." oninput="searchAyah()">
+<h1>📖 تحفيظ القرآن الكريم بخطة ذكية 📖</h1>
 
-<select id="suraSelect"></select>
-<select id="reciterSelect">
-  <option value="ar.alafasy">العفاسي</option>
-  <option value="ar.husary">الحصري</option>
-  <option value="ar.minshawi">المنشاوي</option>
-</select>
-
-<button onclick="loadSura()">تحميل السورة</button>
-<button onclick="showMemorized()">عرض المحفوظ</button>
-
+<button class="plan-btn" onclick="showPlan()">📋 خطة الحفظ اليومية</button>
+<div id="suraList"></div>
 <div id="ayahs"></div>
+<div id="plan"></div>
 
 <script>
 const api = "https://api.quran.gading.dev/surah/";
 
-async function loadSura() {
-  const sura = document.getElementById('suraSelect').value;
-  const reciter = document.getElementById('reciterSelect').value;
-  const res = await fetch(api + sura);
-  const data = await res.json();
-  renderAyahs(data.data.ayahs, sura, reciter);
+// عرض 114 سورة كأزرار
+for (let i = 1; i <= 114; i++) {
+  const btn = document.createElement('button');
+  btn.className = 'sura-btn';
+  btn.innerText = `سورة رقم ${i}`;
+  btn.onclick = () => loadSura(i);
+  document.getElementById('suraList').appendChild(btn);
 }
 
-function renderAyahs(ayahs, sura, reciter) {
+async function loadSura(sura) {
+  const res = await fetch(api + sura);
+  const data = await res.json();
+  renderAyahs(data.data.ayahs, sura);
+}
+
+function renderAyahs(ayahs, sura) {
   const container = document.getElementById('ayahs');
   container.innerHTML = '';
   ayahs.forEach(ayah => {
@@ -50,8 +50,8 @@ function renderAyahs(ayahs, sura, reciter) {
     const saved = localStorage.getItem(`memorized_${sura}_${ayah.number.inSurah}`) ? 'memorized' : '';
     div.innerHTML = `
       <p class="${saved}">${ayah.text.ar}</p>
-      <audio controls src="https://verses.quran.com/${reciter}/${sura.padStart(3,'0')}${ayah.number.inSurah.toString().padStart(3,'0')}.mp3"></audio>
-      <button onclick="markMemorized(${sura}, ${ayah.number.inSurah}, this)">حفظت</button>
+      <audio controls src="https://cdn.islamic.network/quran/audio/128/ar.alafasy/${ayah.number.inQuran}.mp3"></audio>
+      <button onclick="markMemorized(${sura}, ${ayah.number.inSurah}, this)">✔️ حفظت</button>
     `;
     container.appendChild(div);
   });
@@ -60,39 +60,26 @@ function renderAyahs(ayahs, sura, reciter) {
 function markMemorized(sura, ayahNum, btn) {
   localStorage.setItem(`memorized_${sura}_${ayahNum}`, true);
   btn.parentElement.querySelector('p').classList.add('memorized');
+  updatePlan(sura, ayahNum);
 }
 
-function showMemorized() {
-  const sura = document.getElementById('suraSelect').value;
-  const reciter = document.getElementById('reciterSelect').value;
-  fetch(api + sura)
-    .then(res => res.json())
-    .then(data => {
-      const memorizedAyahs = data.data.ayahs.filter(ayah => localStorage.getItem(`memorized_${sura}_${ayah.number.inSurah}`));
-      renderAyahs(memorizedAyahs, sura, reciter);
-    });
-}
-
-function searchAyah() {
-  const term = document.getElementById('search').value.trim();
-  const sura = document.getElementById('suraSelect').value;
-  const reciter = document.getElementById('reciterSelect').value;
-  fetch(api + sura)
-    .then(res => res.json())
-    .then(data => {
-      const result = data.data.ayahs.filter(ayah => ayah.text.ar.includes(term));
-      renderAyahs(result, sura, reciter);
-    });
-}
-
-window.onload = () => {
-  for (let i = 1; i <= 114; i++) {
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = `سورة رقم ${i}`;
-    document.getElementById('suraSelect').appendChild(opt);
+function updatePlan(sura, ayahNum) {
+  let plan = JSON.parse(localStorage.getItem('plan') || '[]');
+  if (!plan.find(item => item.sura == sura && item.ayah == ayahNum)) {
+    plan.push({sura, ayah: ayahNum});
+    localStorage.setItem('plan', JSON.stringify(plan));
   }
-};
+}
+
+function showPlan() {
+  const container = document.getElementById('plan');
+  container.innerHTML = '<h2>📋 خطة الحفظ اليومية</h2>';
+  let plan = JSON.parse(localStorage.getItem('plan') || '[]');
+  if(plan.length === 0) { container.innerHTML += '<p>لا توجد آيات محفوظة بعد.</p>'; return; }
+  plan.forEach(item => {
+    container.innerHTML += `<p>سورة رقم ${item.sura} - آية رقم ${item.ayah}</p>`;
+  });
+}
 </script>
 
 </body>
