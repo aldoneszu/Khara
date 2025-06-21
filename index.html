@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>موقع تحفيظ القرآن الذكي</title>
+<title>موقع تحفيظ القرآن الذكي - عرض السورة كاملة</title>
 <style>
   body { background: #111; color: #eee; font-family: 'Cairo', sans-serif; padding: 20px; }
-  .sura-btn { background: #222; color: #0f0; padding: 10px; margin: 5px; border-radius: 5px; display: inline-block; cursor: pointer; }
+  .sura-btn { background: #222; color: #0f0; padding: 10px; margin: 5px; border-radius: 5px; display: block; width: 100%; cursor: pointer; }
   .ayah { border: 1px solid #333; padding: 10px; margin: 10px 0; border-radius: 5px; }
   .memorized { color: #00ff99; }
   button { margin-top: 5px; }
@@ -14,9 +14,12 @@
 </head>
 <body>
 
-<h1>📖 تحفيظ القرآن الكريم - خطة ذكية 📖</h1>
+<h1>📖 تحفيظ القرآن الكريم - عرض السورة كاملة 📖</h1>
+<h3>اختر السورة لعرضها كاملة:</h3>
 <div id="suraList"></div>
-<div id="ayahs"></div>
+<div id="fullSura"></div>
+<h3>📋 خطة الحفظ اليومية:</h3>
+<div id="plan"></div>
 
 <script>
 const suraNames = [
@@ -34,7 +37,6 @@ const suraNames = [
   "النصر", "المسد", "الإخلاص", "الفلق", "الناس"
 ];
 
-// عرض الأزرار
 for (let i = 1; i <= 114; i++) {
   const btn = document.createElement('button');
   btn.className = 'sura-btn';
@@ -46,24 +48,34 @@ for (let i = 1; i <= 114; i++) {
 async function loadSura(sura) {
   const res = await fetch(`https://api.quran.gading.dev/surah/${sura}`);
   const data = await res.json();
-  document.getElementById('ayahs').innerHTML = `<h2>${suraNames[sura]}</h2>`;
+  let fullText = `<h2>${suraNames[sura]}</h2>`;
   data.data.ayahs.forEach(ayah => {
-    const div = document.createElement('div');
-    div.className = 'ayah';
     const isMem = localStorage.getItem(`mem_${sura}_${ayah.number.inSurah}`) ? 'memorized' : '';
-    div.innerHTML = `
-      <p class="${isMem}">${ayah.text.ar}</p>
-      <audio controls src="https://cdn.islamic.network/quran/audio/128/ar.alafasy/${ayah.number.inQuran}.mp3"></audio><br>
-      <button onclick="markMemorized(${sura},${ayah.number.inSurah},this)">✔️ حفظت هذه الآية</button>
-    `;
-    document.getElementById('ayahs').appendChild(div);
+    fullText += `<span class="${isMem}">${ayah.text.ar} (${ayah.number.inSurah}) </span> `;
+  });
+  document.getElementById('fullSura').innerHTML = fullText;
+}
+
+function updatePlan(sura, ayah) {
+  let plan = JSON.parse(localStorage.getItem('plan') || '[]');
+  if (!plan.find(item => item.sura == sura && item.ayah == ayah)) {
+    plan.push({sura, ayah});
+    localStorage.setItem('plan', JSON.stringify(plan));
+  }
+  renderPlan();
+}
+
+function renderPlan() {
+  const container = document.getElementById('plan');
+  container.innerHTML = '';
+  let plan = JSON.parse(localStorage.getItem('plan') || '[]');
+  if(plan.length === 0) { container.innerHTML = '<p>لا توجد آيات في خطة الحفظ بعد.</p>'; return; }
+  plan.forEach(item => {
+    container.innerHTML += `<p>سورة: ${suraNames[item.sura]} - آية رقم ${item.ayah}</p>`;
   });
 }
 
-function markMemorized(sura, ayah, btn) {
-  localStorage.setItem(`mem_${sura}_${ayah}`, true);
-  btn.parentElement.querySelector('p').classList.add('memorized');
-}
+renderPlan();
 </script>
 
 </body>
